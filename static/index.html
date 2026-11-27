@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReviewSense — E-Commerce Sentiment Intelligence</title>
+  <link rel="icon" type="image/png" href="/static/images/logo.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Chart.js and html2canvas CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+</head>
+<body>
+
+  <!-- Ambient Background Glow Elements -->
+  <div class="ambient-glow glow-top-left"></div>
+  <div class="ambient-glow glow-top-right"></div>
+  <div class="ambient-glow glow-center"></div>
+
+  <!-- Scroll Progress Indicator -->
+  <div class="scroll-progress-bar" id="scroll-progress"></div>
+
+  <!-- Top App Header -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-logo-container">
+          <img src="/static/images/logo.png" alt="ReviewSense Logo" class="brand-logo-img">
+          <div class="logo-glow"></div>
+        </div>
+        <div>
+          <div class="brand-title-wrap">
+            <h1 class="brand-title">ReviewSense</h1>
+          </div>
+          <p class="brand-subtitle">E-Commerce Sentiment Intelligence & Review Analytics</p>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button id="btn-sample-data" class="btn btn-secondary" title="Reload built-in 1,000 product reviews">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"></path><path d="M8 16H3v5"></path></svg>
+          <span>Use Sample Dataset</span>
+        </button>
+
+        <button id="btn-export-csv" class="btn btn-primary" title="Export analyzed reviews as CSV">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Export CSV</span>
+        </button>
+
+        <button id="btn-export-dashboard" class="btn btn-outline" title="Export report snapshot image">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+          <span>Export Report</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main-content" id="printable-dashboard">
+
+    <!-- Hero / Upload & File Info Section -->
+    <section class="section-card upload-section reveal-on-scroll">
+      <div class="upload-dropzone" id="dropzone">
+        <input type="file" id="file-input" accept=".csv, .xlsx, .xls, .tsv" style="display: none;">
+        <div class="dropzone-content">
+          <div class="upload-icon-circle">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"></path>
+              <path d="M12 12v9"></path>
+              <path d="m16 16-4-4-4 4"></path>
+            </svg>
+          </div>
+          <div class="upload-text-group">
+            <h3 class="upload-heading">Upload Your Product Reviews Dataset</h3>
+            <p class="upload-desc">Drag & drop your <span class="highlight-ext">.CSV</span> or <span class="highlight-ext">.XLSX</span> file here, or <span class="upload-browse-link">browse your files</span>.</p>
+            <span class="upload-subtext">Automatic column detection handles any file format, column order, or custom naming.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active File & Data Cleaning Bar -->
+      <div class="file-status-strip" id="file-status-bar">
+        <div class="status-left">
+          <div class="pulse-indicator">
+            <span class="pulse-dot"></span>
+            <span class="dataset-badge" id="active-file-badge">Loaded: product_reviews_and_sale.csv</span>
+          </div>
+          <span class="status-text" id="cleaning-summary-text">Cleaning: 1,000 total rows &bull; 0 removed &bull; 0 missing values</span>
+        </div>
+        <div class="status-right">
+          <button id="btn-toggle-columns" class="btn-text">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+            <span>Detected Columns</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Detected Columns Configuration Box (collapsible) -->
+      <div class="detected-columns-box" id="columns-config-box">
+        <div class="columns-config-header">
+          <div>
+            <h4 class="config-title">Automatic Column Detection</h4>
+            <p class="config-subtitle">ReviewSense identified the following schema. You can customize any mapping below before re-running.</p>
+          </div>
+          <button id="btn-rerun-analysis" class="btn btn-sm btn-primary">
+            Apply & Re-run Analysis
+          </button>
+        </div>
+        <div class="columns-grid" id="columns-mapping-fields">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Try a Review Box with Interactive Gauge -->
+    <section class="section-card single-review-section reveal-on-scroll">
+      <div class="single-review-grid">
+        <div class="single-review-left">
+          <div class="pill-label">Live Inference</div>
+          <h3 class="section-title">Try a Review</h3>
+          <p class="section-desc">Type or paste any product review below to test sentiment analysis.</p>
+
+          <div class="single-review-input-group">
+            <input type="text" id="single-review-text" placeholder="e.g., Battery life is remarkable, lasted two whole days on a single charge!" value="Sound quality is crisp and bass is punchy. Truly exceeded my expectations!">
+            <button id="btn-predict-single" class="btn btn-primary">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              <span>Analyze</span>
+            </button>
+          </div>
+
+          <div class="single-review-result" id="single-result-box">
+            <div class="result-badge-wrap">
+              <span class="sentiment-badge badge-positive" id="single-sentiment-badge">POSITIVE</span>
+              <span class="confidence-text" id="single-confidence-text">Confidence: 98.4%</span>
+            </div>
+            <div class="sentiment-meter-bar">
+              <div class="meter-fill meter-positive" id="meter-pos" style="width: 98.4%;" title="Positive"></div>
+              <div class="meter-fill meter-neutral" id="meter-neu" style="width: 1.2%;" title="Neutral"></div>
+              <div class="meter-fill meter-negative" id="meter-neg" style="width: 0.4%;" title="Negative"></div>
+            </div>
+            <div class="meter-legend">
+              <span>Positive: <strong id="score-pos">98.4%</strong></span>
+              <span>Neutral: <strong id="score-neu">1.2%</strong></span>
+              <span>Negative: <strong id="score-neg">0.4%</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive Gauge Visualizer (Inspired by Logo) -->
+        <div class="single-review-right">
+          <div class="gauge-card">
+            <div class="gauge-title-label">Sentiment Dial</div>
+            <div class="gauge-wrapper">
+              <svg class="gauge-svg" viewBox="0 0 200 120">
+                <!-- Background Arc -->
+                <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="16" stroke-linecap="round"/>
+                <!-- Colored Arc: Negative (Red), Neutral (Yellow), Positive (Green) -->
+                <path d="M 20 100 A 80 80 0 0 1 65 37" fill="none" stroke="#f43f5e" stroke-width="16" stroke-linecap="round" opacity="0.9"/>
+                <path d="M 68 35 A 80 80 0 0 1 132 35" fill="none" stroke="#fbbf24" stroke-width="16" opacity="0.9"/>
+                <path d="M 135 37 A 80 80 0 0 1 180 100" fill="none" stroke="#10b981" stroke-width="16" stroke-linecap="round" opacity="0.9"/>
+                
+                <!-- Gauge Needle -->
+                <g id="gauge-needle-group" style="transform-origin: 100px 100px; transform: rotate(50deg); transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);">
+                  <line x1="100" y1="100" x2="100" y2="35" stroke="#ffffff" stroke-width="3" stroke-linecap="round" filter="drop-shadow(0 0 4px #a855f7)"/>
+                  <circle cx="100" cy="100" r="7" fill="#a855f7"/>
+                  <circle cx="100" cy="100" r="3" fill="#ffffff"/>
+                </g>
+              </svg>
+            </div>
+            <div class="gauge-icons">
+              <span class="gauge-face" title="Negative">😡</span>
+              <span class="gauge-face" title="Neutral">😐</span>
+              <span class="gauge-face" title="Positive">😃</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Top Summary Cards with Staggered Entrance & Counters -->
+    <section class="summary-cards-grid reveal-on-scroll" id="summary-cards">
+      <div class="stat-card" style="--stagger: 1">
+        <div class="stat-icon icon-purple">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Total Reviews</span>
+          <span class="stat-value counter-value" id="card-total-reviews">1,000</span>
+          <span class="stat-sub">100% computed from dataset</span>
+        </div>
+      </div>
+
+      <div class="stat-card" style="--stagger: 2">
+        <div class="stat-icon icon-green">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><path d="M8 14s1.5 2 4 2 4-2 4-2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Positive Sentiment</span>
+          <span class="stat-value text-green counter-value" id="card-pct-positive">58.0%</span>
+          <span class="stat-sub" id="card-count-positive">580 reviews</span>
+        </div>
+      </div>
+
+      <div class="stat-card" style="--stagger: 3">
+        <div class="stat-icon icon-indigo">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><line x1="8" y1="15" x2="16" y2="15"></line><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Neutral Sentiment</span>
+          <span class="stat-value text-indigo counter-value" id="card-pct-neutral">20.0%</span>
+          <span class="stat-sub" id="card-count-neutral">200 reviews</span>
+        </div>
+      </div>
+
+      <div class="stat-card" style="--stagger: 4">
+        <div class="stat-icon icon-red">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"></circle><path d="M16 16s-1.5-2-4-2-4 2-4 2"></path><line x1="9" y1="9" x2="9.01" y2="9"></line><line x1="15" y1="9" x2="15.01" y2="9"></line></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Negative Sentiment</span>
+          <span class="stat-value text-red counter-value" id="card-pct-negative">22.0%</span>
+          <span class="stat-sub" id="card-count-negative">220 reviews</span>
+        </div>
+      </div>
+
+      <div class="stat-card" id="card-rating-wrapper" style="--stagger: 5">
+        <div class="stat-icon icon-amber">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+        </div>
+        <div class="stat-info">
+          <span class="stat-label">Average Star Rating</span>
+          <span class="stat-value text-amber counter-value" id="card-avg-rating">4.18 / 5</span>
+          <span class="stat-sub">From customer ratings</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Visual Graphs Grid -->
+    <section class="charts-section reveal-on-scroll">
+      <div class="section-title-wrap">
+        <div class="pill-label">Visual Analytics</div>
+        <h2 class="dashboard-title">Visual Sentiment Intelligence</h2>
+        <p class="dashboard-subtitle">Real-time charts automatically tailored to the detected schema of your dataset.</p>
+      </div>
+
+      <div class="charts-grid">
+        <!-- 1. Sentiment Distribution -->
+        <div class="chart-box" id="chart-box-sentiment">
+          <div class="chart-header">
+            <h4 class="chart-title">1. Sentiment Distribution</h4>
+            <span class="chart-badge">Overall</span>
+          </div>
+          <div class="chart-canvas-container donut-container">
+            <canvas id="chart-sentiment-dist"></canvas>
+          </div>
+          <div class="chart-takeaway" id="takeaway-sentiment-dist">Loading takeaway...</div>
+        </div>
+
+        <!-- 2. Categorical Stacked Bar Charts (Dynamic container) -->
+        <div class="chart-box" id="chart-box-categorical-0">
+          <div class="chart-header">
+            <h4 class="chart-title" id="title-cat-0">2. Sentiment by Platform / Channel</h4>
+            <span class="chart-badge">Categorical</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-cat-0"></canvas>
+          </div>
+          <div class="chart-takeaway" id="takeaway-cat-0">Loading takeaway...</div>
+        </div>
+
+        <div class="chart-box" id="chart-box-categorical-1">
+          <div class="chart-header">
+            <h4 class="chart-title" id="title-cat-1">3. Sentiment by Product Category</h4>
+            <span class="chart-badge">Categorical</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-cat-1"></canvas>
+          </div>
+          <div class="chart-takeaway" id="takeaway-cat-1">Loading takeaway...</div>
+        </div>
+
+        <!-- 3. Rating Distribution -->
+        <div class="chart-box" id="chart-box-rating">
+          <div class="chart-header">
+            <h4 class="chart-title">4. Customer Rating Distribution</h4>
+            <span class="chart-badge">Ratings</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-rating"></canvas>
+          </div>
+          <div class="chart-takeaway" id="takeaway-rating">Loading takeaway...</div>
+        </div>
+
+        <!-- 4. Sentiment Trend Over Time -->
+        <div class="chart-box full-width-chart" id="chart-box-trend">
+          <div class="chart-header">
+            <h4 class="chart-title">5. Sentiment Trajectory Over Time</h4>
+            <span class="chart-badge">Timeline</span>
+          </div>
+          <div class="chart-canvas-container line-container">
+            <canvas id="chart-trend"></canvas>
+          </div>
+          <div class="chart-takeaway" id="takeaway-trend">Loading takeaway...</div>
+        </div>
+
+        <!-- 5. Top Categories (Positive vs Negative) -->
+        <div class="chart-box" id="chart-box-top-categories">
+          <div class="chart-header">
+            <h4 class="chart-title">6. Top Categories (Praise vs Complaints)</h4>
+            <span class="chart-badge">Leaders</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-top-categories"></canvas>
+          </div>
+          <div class="chart-takeaway" id="takeaway-top-categories">Loading takeaway...</div>
+        </div>
+
+        <!-- 6. Negative Reviews Heatmap -->
+        <div class="chart-box" id="chart-box-heatmap">
+          <div class="chart-header">
+            <h4 class="chart-title" id="title-heatmap">7. Negative Reviews Heatmap</h4>
+            <span class="chart-badge">Friction Matrix</span>
+          </div>
+          <div class="heatmap-container" id="heatmap-render-area">
+            <!-- Rendered by JS -->
+          </div>
+          <div class="chart-takeaway" id="takeaway-heatmap">Loading takeaway...</div>
+        </div>
+
+        <!-- 7. Confusion Matrix -->
+        <div class="chart-box" id="chart-box-confusion">
+          <div class="chart-header">
+            <h4 class="chart-title">8. Model Accuracy & Confusion Matrix</h4>
+            <span class="chart-badge" id="confusion-acc-badge">91.4% Accuracy</span>
+          </div>
+          <div class="confusion-container" id="confusion-render-area">
+            <!-- Rendered by JS -->
+          </div>
+          <div class="chart-takeaway" id="takeaway-confusion">Loading takeaway...</div>
+        </div>
+
+        <!-- 8. Top Keywords (Praises & Complaints) -->
+        <div class="chart-box" id="chart-box-keywords">
+          <div class="chart-header">
+            <h4 class="chart-title">9. Voice of Customer: Top Praises & Complaints</h4>
+            <span class="chart-badge">Text Signals</span>
+          </div>
+          <div class="keywords-columns">
+            <div class="keyword-subcol">
+              <span class="keyword-subhead text-green">Top Praises</span>
+              <div class="tags-list" id="praises-tag-list"></div>
+            </div>
+            <div class="keyword-subcol">
+              <span class="keyword-subhead text-red">Top Complaints</span>
+              <div class="tags-list" id="complaints-tag-list"></div>
+            </div>
+          </div>
+          <div class="chart-takeaway" id="takeaway-keywords">Loading takeaway...</div>
+        </div>
+
+        <!-- 9. Numeric Column vs Sentiment -->
+        <div class="chart-box" id="chart-box-numeric">
+          <div class="chart-header">
+            <h4 class="chart-title" id="title-numeric">10. Numeric Metrics vs Sentiment</h4>
+            <span class="chart-badge">Economics</span>
+          </div>
+          <div class="chart-canvas-container">
+            <canvas id="chart-numeric"></canvas>
+          </div>
+          <div class="chart-takeaway" id="takeaway-numeric">Loading takeaway...</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AI Insights Section -->
+    <section class="section-card ai-insights-card reveal-on-scroll">
+      <div class="ai-header">
+        <div class="ai-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path></svg>
+        </div>
+        <div>
+          <div class="brand-badge-pro" style="margin-bottom: 4px;">AUTOMATED SYNTHESIS</div>
+          <h3 class="ai-title">AI Executive Insights & Recommendations</h3>
+          <p class="ai-subtitle">Concise plain-English synthesis generated strictly from real dataset figures (~150 words).</p>
+        </div>
+      </div>
+
+      <div class="ai-body">
+        <div class="insight-sentence-box">
+          <p id="insight-overall-sentence" class="highlight-sentence">Analyzing reviews...</p>
+        </div>
+
+        <div class="insights-grid">
+          <div class="insight-col">
+            <h5 class="insight-col-title">Performance Outliers</h5>
+            <div class="insight-item">
+              <span class="item-label">Highest Performing Channel/Segment:</span>
+              <span class="item-val text-green" id="insight-best-performer">—</span>
+            </div>
+            <div class="insight-item">
+              <span class="item-label">Area Requiring Attention:</span>
+              <span class="item-val text-red" id="insight-worst-performer">—</span>
+            </div>
+            <div class="insight-item">
+              <span class="item-label">Ground-Truth Label Alignment:</span>
+              <span class="item-val text-slate" id="insight-label-mismatch">—</span>
+            </div>
+          </div>
+
+          <div class="insight-col">
+            <h5 class="insight-col-title">Frequent Signals</h5>
+            <div class="insight-item">
+              <span class="item-label">Key Customer Praises:</span>
+              <span class="item-val" id="insight-top-praises">—</span>
+            </div>
+            <div class="insight-item">
+              <span class="item-label">Key Customer Complaints:</span>
+              <span class="item-val" id="insight-top-complaints">—</span>
+            </div>
+          </div>
+
+          <div class="insight-col col-recommendations">
+            <h5 class="insight-col-title">Actionable Seller Recommendations</h5>
+            <ul class="recommendation-list" id="insight-recommendations-list">
+              <li>Reviewing seller action items...</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Review Explorer Table Section -->
+    <section class="section-card table-section reveal-on-scroll">
+      <div class="table-header">
+        <div>
+          <div class="pill-label">Dataset Inspection</div>
+          <h3 class="section-title">Review Explorer</h3>
+          <p class="section-desc">Search, filter, and inspect reviews with predicted sentiments and model confidence scores.</p>
+        </div>
+        
+        <div class="table-controls">
+          <div class="search-input-wrap">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" id="table-search" placeholder="Search reviews...">
+          </div>
+
+          <div class="filter-select-wrap">
+            <select id="filter-sentiment">
+              <option value="all">All Sentiments</option>
+              <option value="positive">Positive</option>
+              <option value="neutral">Neutral</option>
+              <option value="negative">Negative</option>
+            </select>
+          </div>
+
+          <div class="filter-select-wrap" id="category-filter-wrap">
+            <select id="filter-category">
+              <option value="all">All Segments</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="reviews-table" id="reviews-table">
+          <thead>
+            <tr id="table-head-row">
+              <th>#</th>
+              <th>Review</th>
+              <th>Predicted Sentiment</th>
+              <th>Confidence</th>
+              <!-- Dynamic extra columns -->
+            </tr>
+          </thead>
+          <tbody id="table-body">
+            <tr>
+              <td colspan="6" class="text-center py-4">Loading review records...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar">
+        <div class="pagination-info" id="pagination-info">Showing 1 to 10 of 1,000 entries</div>
+        <div class="pagination-buttons">
+          <button id="btn-page-prev" class="btn btn-sm btn-outline">Previous</button>
+          <span class="page-current" id="page-indicator">Page 1 of 100</span>
+          <button id="btn-page-next" class="btn btn-sm btn-outline">Next</button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- App Footer -->
+  <footer class="app-footer">
+    <div class="footer-container">
+      <div class="footer-brand">
+        <img src="/static/images/logo.png" alt="ReviewSense Logo" class="footer-logo">
+        <span>ReviewSense</span>
+      </div>
+      <p>Powered by CardiffNLP Twitter XLM-RoBERTa &bull; Real-time AI Sentiment Analytics</p>
+    </div>
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
